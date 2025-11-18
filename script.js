@@ -1,13 +1,8 @@
 (() => {
 	"use strict";
 
-	// Configure this to route emails through a backend or email API.
-	// Example: Formspree endpoint like "https://formspree.io/f/xxxxxx"
-	// If left empty, a mailto: fallback will be used.
-	// Default: use FormSubmit to send emails without a backend or DB.
-	// Learn more: https://formsubmit.co/
-	const EMAIL_ENDPOINT = "";
-	const DOCTOR_EMAIL = "microdegreecode2@gmail.com";
+	// Google Apps Script Web App URL - You'll get this after deployment
+	const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8qSMto2wcabs9q8RVqtxjWVHVg-mxp7cHmcy-UexKAJlRtwbOFEFd3vGCU9RRlMTT/exec";
 
 	const routes = Array.from(document.querySelectorAll("[data-route]"));
 	const navLinks = Array.from(document.querySelectorAll("[data-nav]"));
@@ -17,7 +12,6 @@
 	const form = document.getElementById("contact-form");
 	const formStatus = document.getElementById("form-status");
 	let submitting = false;
-	// const FORM_SUBMIT_AJAX = "https://formsubmit.co/ajax/microdegreecode2@gmail.com";
 
 	// Dynamic year
 	if (yearEl) {
@@ -88,40 +82,62 @@
 	// Initialize route
 	handleHashChange();
 
-	form.addEventListener("submit", async (e) => {
-		e.preventDefault();
-		
-		// Get all form values and store as variables
-		const name = document.getElementById("name").value;
-		const email = document.getElementById("email").value;
-		const phone = document.getElementById("phone").value;
-		const goal = document.getElementById("goal").value;
-		const message = document.getElementById("message").value;
-		
-		// Create payload with the stored values
-		const payload = new FormData();
-		payload.set("name", name);
-		payload.set("email", email);
-		payload.set("phone", phone);
-		payload.set("goal", goal);
-		payload.set("message", message);
-		payload.set("_subject", `New inquiry from ${name}`);
-		
-		// Send email via FormSubmit
-		const res = await fetch("https://formsubmit.co/ajax/microdegreecode2@gmail.com", {
-			method: "POST",
-			headers: { "Accept": "application/json" },
-			body: payload
+	// Form submission to Google Sheets
+	if (form) {
+		form.addEventListener("submit", async (e) => {
+			e.preventDefault();
+			
+			// Prevent double submission
+			if (submitting) return;
+			submitting = true;
+			
+			// Get all form values
+			const name = document.getElementById("name").value.trim();
+			const email = document.getElementById("email").value.trim();
+			const phone = document.getElementById("phone").value.trim();
+			const goal = document.getElementById("goal").value;
+			const message = document.getElementById("message").value.trim();
+			
+			// Show loading state
+			const submitButton = form.querySelector('button[type="submit"]');
+			const originalButtonText = submitButton ? submitButton.textContent : '';
+			if (submitButton) {
+				submitButton.textContent = 'Sending...';
+				submitButton.disabled = true;
+			}
+			
+			// Create FormData object for Google Apps Script
+			const formData = new FormData();
+			formData.append("name", name);
+			formData.append("email", email);
+			formData.append("phone", phone);
+			formData.append("goal", goal);
+			formData.append("message", message);
+			
+			try {
+				const res = await fetch(GOOGLE_SCRIPT_URL, {
+					method: "POST",
+					body: formData
+				});
+				
+				const data = await res.json();
+				
+				if (data.success) {
+					alert("Thank you! Your message has been submitted successfully.");
+					form.reset();
+				} else {
+					alert("Something went wrong. Please try again or contact us directly at microdegreecode2@gmail.com");
+				}
+			} catch (error) {
+				console.error("Error:", error);
+				alert("Failed to submit form. Please try again or email us at microdegreecode2@gmail.com");
+			} finally {
+				submitting = false;
+				if (submitButton) {
+					submitButton.textContent = originalButtonText;
+					submitButton.disabled = false;
+				}
+			}
 		});
-		
-		if (res.ok) {
-			alert("Email sent successfully!");
-			form.reset();
-		} else {
-			alert("Failed to send email.");
-		}
-	});
-	
+	}
 })();
-
-
